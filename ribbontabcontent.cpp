@@ -15,6 +15,12 @@
 RibbonTabContent::RibbonTabContent(QWidget *parent)
   : QWidget(parent)
   , ui(new Ui::RibbonTabContent)
+  , m_layoutMode(RibbonButtonGroup::ThreeRowMode)
+  , m_panelTitleHeight(-1)
+  , m_showPanelTitle(true)
+  , m_panelSpacing(0)
+  , m_largeIconSize(32, 32)
+  , m_smallIconSize(16, 16)
 {
   ui->setupUi(this);
 }
@@ -24,30 +30,67 @@ RibbonTabContent::~RibbonTabContent()
   delete ui;
 }
 
+// ── Private helpers ───────────────────────────────────────────────────────────
+
+RibbonButtonGroup *RibbonTabContent::findGroup(const QString &groupName) const
+{
+  for (int i = 0; i < ui->ribbonHorizontalLayout->count(); i++)
+  {
+    QLayoutItem *li = ui->ribbonHorizontalLayout->itemAt(i);
+    if (!li || !li->widget())
+      continue;
+    RibbonButtonGroup *group = static_cast<RibbonButtonGroup*>(li->widget());
+    if (group->title().toLower() == groupName.toLower())
+      return group;
+  }
+  return nullptr;
+}
+
+RibbonButtonGroup *RibbonTabContent::getOrCreateGroup(const QString &groupName)
+{
+  RibbonButtonGroup *group = findGroup(groupName);
+  if (!group)
+    addGroup(groupName);
+  return findGroup(groupName);
+}
+
+// ── Group management ──────────────────────────────────────────────────────────
+
 void RibbonTabContent::addGroup(const QString &groupName)
 {
-  RibbonButtonGroup *ribbonButtonGroup = new RibbonButtonGroup;
-  ribbonButtonGroup->setTitle(groupName);
+  RibbonButtonGroup *group = new RibbonButtonGroup;
+  group->setTitle(groupName);
+  group->setLayoutMode(m_layoutMode);
+  group->setLargeIconSize(m_largeIconSize);
+  group->setSmallIconSize(m_smallIconSize);
 
-  ui->ribbonHorizontalLayout->addWidget(ribbonButtonGroup);
+  if (m_panelTitleHeight >= 0)
+    group->setPanelTitleHeight(m_panelTitleHeight);
+  if (!m_showPanelTitle)
+    group->setTitleVisible(false);
+
+  // Propagate actionTriggered upward
+  connect(group, &RibbonButtonGroup::actionTriggered,
+          this,  &RibbonTabContent::actionTriggered);
+
+  ui->ribbonHorizontalLayout->addWidget(group);
 }
 
 void RibbonTabContent::removeGroup(const QString &groupName)
 {
-  // Find ribbon group
   for (int i = 0; i < ui->ribbonHorizontalLayout->count(); i++)
   {
-    RibbonButtonGroup *group = static_cast<RibbonButtonGroup*>(ui->ribbonHorizontalLayout->itemAt(i)->widget());
+    QLayoutItem *li = ui->ribbonHorizontalLayout->itemAt(i);
+    if (!li || !li->widget())
+      continue;
+    RibbonButtonGroup *group = static_cast<RibbonButtonGroup*>(li->widget());
     if (group->title().toLower() == groupName.toLower())
     {
-      ui->ribbonHorizontalLayout->removeWidget(group); /// \todo :( No effect
+      ui->ribbonHorizontalLayout->removeWidget(group);
       delete group;
       break;
     }
   }
-
-  /// \todo  What if the group still contains buttons? Delete manually?
-  // Or automaticly deleted by Qt parent() system.
 }
 
 int RibbonTabContent::groupCount() const
@@ -55,62 +98,169 @@ int RibbonTabContent::groupCount() const
   return ui->ribbonHorizontalLayout->count();
 }
 
+// ── Legacy QToolButton API ────────────────────────────────────────────────────
+
 void RibbonTabContent::addButton(const QString &groupName, QToolButton *button)
 {
-  // Find ribbon group
-  RibbonButtonGroup *ribbonButtonGroup = nullptr;
-  for (int i = 0; i < ui->ribbonHorizontalLayout->count(); i++)
-  {
-    RibbonButtonGroup *group = static_cast<RibbonButtonGroup*>(ui->ribbonHorizontalLayout->itemAt(i)->widget());
-    if (group->title().toLower() == groupName.toLower())
-    {
-      ribbonButtonGroup = group;
-      break;
-    }
-  }
-
-  if (ribbonButtonGroup != nullptr)
-  {
-    // Group found
-    // Add ribbon button
-    ribbonButtonGroup->addButton(button);
-  }
-  else
-  {
-    // Group not found
-    // Add ribbon group
-    addGroup(groupName);
-
-    // Add ribbon button
-    addButton(groupName, button);
-  }
+  getOrCreateGroup(groupName)->addButton(button);
 }
 
 void RibbonTabContent::removeButton(const QString &groupName, QToolButton *button)
 {
-  // Find ribbon group
-  RibbonButtonGroup *ribbonButtonGroup = nullptr;
+  RibbonButtonGroup *group = findGroup(groupName);
+  if (!group)
+    return;
+  group->removeButton(button);
+  if (group->buttonCount() == 0)
+    removeGroup(groupName);
+}
+
+// ── Action-based API ──────────────────────────────────────────────────────────
+
+void RibbonTabContent::addAction(const QString &groupName, QAction *action,
+                                 RibbonButtonGroup::ButtonSize size)
+{
+  getOrCreateGroup(groupName)->addAction(action, size);
+}
+
+void RibbonTabContent::addAction(const QString &groupName, QAction *action,
+                                 RibbonButtonGroup::ButtonSize size,
+                                 QToolButton::ToolButtonPopupMode popupMode)
+{
+  getOrCreateGroup(groupName)->addAction(action, size, popupMode);
+}
+
+void RibbonTabContent::removeAction(const QString &groupName, QAction *action)
+{
+  RibbonButtonGroup *group = findGroup(groupName);
+  if (!group)
+    return;
+  group->removeAction(action);
+  if (group->buttonCount() == 0)
+    removeGroup(groupName);
+}
+
+// ── Menu convenience ──────────────────────────────────────────────────────────
+
+void RibbonTabContent::addMenu(const QString &groupName, QMenu *menu,
+                               RibbonButtonGroup::ButtonSize size,
+                               QToolButton::ToolButtonPopupMode popupMode)
+{
+  getOrCreateGroup(groupName)->addMenu(menu, size, popupMode);
+}
+
+// ── Widget embedding ──────────────────────────────────────────────────────────
+
+void RibbonTabContent::addWidget(const QString &groupName, QWidget *widget,
+                                 RibbonButtonGroup::ButtonSize size)
+{
+  getOrCreateGroup(groupName)->addWidget(widget, size);
+}
+
+void RibbonTabContent::removeWidget(const QString &groupName, QWidget *widget)
+{
+  RibbonButtonGroup *group = findGroup(groupName);
+  if (!group)
+    return;
+  group->removeWidget(widget);
+  if (group->buttonCount() == 0)
+    removeGroup(groupName);
+}
+
+// ── Separator ─────────────────────────────────────────────────────────────────
+
+void RibbonTabContent::addSeparator(const QString &groupName)
+{
+  getOrCreateGroup(groupName)->addSeparator();
+}
+
+// ── Per-group properties ───────────────────────────────────────────────────────
+
+void RibbonTabContent::setGroupExpanding(const QString &groupName, bool expanding)
+{
+  RibbonButtonGroup *group = findGroup(groupName);
+  if (group)
+    group->setExpanding(expanding);
+}
+
+void RibbonTabContent::setGroupOptionAction(const QString &groupName, QAction *action)
+{
+  RibbonButtonGroup *group = findGroup(groupName);
+  if (group)
+    group->setOptionAction(action);
+}
+
+// ── Layout mode ───────────────────────────────────────────────────────────────
+
+void RibbonTabContent::setLayoutMode(RibbonButtonGroup::LayoutMode mode)
+{
+  m_layoutMode = mode;
   for (int i = 0; i < ui->ribbonHorizontalLayout->count(); i++)
   {
-    RibbonButtonGroup *group = static_cast<RibbonButtonGroup*>(ui->ribbonHorizontalLayout->itemAt(i)->widget());
-    if (group->title().toLower() == groupName.toLower())
-    {
-      ribbonButtonGroup = group;
-      break;
-    }
+    QLayoutItem *li = ui->ribbonHorizontalLayout->itemAt(i);
+    if (!li || !li->widget()) continue;
+    static_cast<RibbonButtonGroup*>(li->widget())->setLayoutMode(mode);
   }
+}
 
-  if (ribbonButtonGroup != nullptr)
+RibbonButtonGroup::LayoutMode RibbonTabContent::layoutMode() const
+{
+  return m_layoutMode;
+}
+
+// ── Global appearance ─────────────────────────────────────────────────────────
+
+void RibbonTabContent::setPanelTitleHeight(int height)
+{
+  m_panelTitleHeight = height;
+  for (int i = 0; i < ui->ribbonHorizontalLayout->count(); i++)
   {
-    // Group found
-    // Remove ribbon button
-    ribbonButtonGroup->removeButton(button);
+    QLayoutItem *li = ui->ribbonHorizontalLayout->itemAt(i);
+    if (!li || !li->widget()) continue;
+    static_cast<RibbonButtonGroup*>(li->widget())->setPanelTitleHeight(height);
+  }
+}
 
-    if (ribbonButtonGroup->buttonCount() == 0)
-    {
-      // Empty button group
-      // Remove button group
-      removeGroup(groupName);
-    }
+void RibbonTabContent::setShowPanelTitle(bool visible)
+{
+  m_showPanelTitle = visible;
+  for (int i = 0; i < ui->ribbonHorizontalLayout->count(); i++)
+  {
+    QLayoutItem *li = ui->ribbonHorizontalLayout->itemAt(i);
+    if (!li || !li->widget()) continue;
+    static_cast<RibbonButtonGroup*>(li->widget())->setTitleVisible(visible);
+  }
+}
+
+void RibbonTabContent::setPanelSpacing(int spacing)
+{
+  m_panelSpacing = spacing;
+  ui->ribbonHorizontalLayout->setSpacing(spacing);
+}
+
+int RibbonTabContent::panelSpacing() const
+{
+  return m_panelSpacing;
+}
+
+void RibbonTabContent::setLargeIconSize(const QSize &size)
+{
+  m_largeIconSize = size;
+  for (int i = 0; i < ui->ribbonHorizontalLayout->count(); i++)
+  {
+    QLayoutItem *li = ui->ribbonHorizontalLayout->itemAt(i);
+    if (!li || !li->widget()) continue;
+    static_cast<RibbonButtonGroup*>(li->widget())->setLargeIconSize(size);
+  }
+}
+
+void RibbonTabContent::setSmallIconSize(const QSize &size)
+{
+  m_smallIconSize = size;
+  for (int i = 0; i < ui->ribbonHorizontalLayout->count(); i++)
+  {
+    QLayoutItem *li = ui->ribbonHorizontalLayout->itemAt(i);
+    if (!li || !li->widget()) continue;
+    static_cast<RibbonButtonGroup*>(li->widget())->setSmallIconSize(size);
   }
 }
