@@ -1,0 +1,122 @@
+/*
+Dark theme for QtRibbonWidget
+Adapted from SARibbon
+*/
+
+Ribbon {
+  background-color: #2b2b2b;
+  border: none;
+  color: #b2b2b2;
+}
+
+Ribbon::pane {
+  border-top: 1px solid #737373;
+  position: absolute;
+  top: -1px;
+}
+
+RibbonTabBar {
+  background-color: transparent;
+}
+
+RibbonTabBar::tab {
+  color: #a0a0a0;
+  border: 1px solid transparent;
+  background: transparent;
+  margin-top: 0px;
+  margin-right: 0px;
+  margin-left: 5px;
+  margin-bottom: 0px;
+  min-width: 50px;
+  padding: 5px 10px;
+}
+
+RibbonTabBar::tab:selected {
+  color: #242424;
+  background-color: #b2b2b2;
+  border: 1px solid #737373;
+}
+
+RibbonTabBar::tab:hover:!selected {
+  border: 1px solid #a6a6a6;
+  color: white;
+}
+
+RibbonTabContent {
+  background-color: #b2b2b2;
+}
+
+RibbonButtonGroup {
+  background-color: #b2b2b2;
+  border: none;
+  color: #242424;
+}
+
+RibbonButtonGroup > QLabel#label {
+    background-color: transparent;
+    color: #242424;
+    font-size: 8pt;
+}
+
+RibbonButtonGroup > QFrame#horizontalLine {
+    background-color: #9b9b9b;
+}
+
+RibbonToolButton {
+  border: none;
+  color: #242424;
+  background-color: #b2b2b2;
+}
+
+RibbonToolButton:hover {
+  color: #242424;
+  background-color: #a0a0a0;
+  border: 1px solid #858585;
+}
+
+RibbonToolButton:pressed {
+  color: #242424;
+  background-color: #858585;
+  border: 1px solid #858585;
+}
+
+RibbonToolButton:checked {
+  color: #242424;
+  background-color: #9b9b9b;
+  border: 1px solid #858585;
+}
+
+/* Common Widget Styling in Group */
+RibbonButtonGroup > QLineEdit {
+  border: 1px solid #888888;
+  background-color: white;
+  color: #242424;
+  selection-background-color: #6a9eff;
+  selection-color: white;
+}
+RibbonButtonGroup > QLineEdit:hover {
+  border: 1px solid #cfcecc;
+}
+
+RibbonButtonGroup > QCheckBox {
+  color: #242424;
+  background-color: transparent;
+}
+
+RibbonButtonGroup > QComboBox {
+  border: 1px solid #888888;
+  background-color: white;
+}
+RibbonButtonGroup > QComboBox:hover {
+  border: 1px solid #cfcecc;
+  color : #242424;
+}
+RibbonButtonGroup > QComboBox::drop-down {
+  subcontrol-origin: padding;
+  subcontrol-position: top right;
+  width: 1em;
+  border: none;
+}
+RibbonButtonGroup > QComboBox::down-arrow {
+  image: url(:/icons/ArrowDown.png);
+}

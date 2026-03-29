@@ -10,6 +10,7 @@
 
 #include "ribbonbuttongroup.h"
 #include "ui_ribbonbuttongroup.h"
+#include "ribbontoolbutton.h"
 
 #include <QFrame>
 
@@ -181,6 +182,25 @@ void RibbonButtonGroup::addAction(QAction *action, ButtonSize size)
 void RibbonButtonGroup::addAction(QAction *action, ButtonSize size,
                                   QToolButton::ToolButtonPopupMode popupMode)
 {
+  if ( !action )
+    return;
+
+  // Check if this action is already in the group
+  for ( int i = 0; i < m_panelItems.count(); ++i )
+  {
+    if ( m_panelItems[i].type == PanelItem::ActionType && m_panelItems[i].action == action )
+    {
+      // Already exists, update size and popup mode if changed
+      if ( m_panelItems[i].size != size || m_panelItems[i].popupMode != popupMode )
+      {
+        m_panelItems[i].size = size;
+        m_panelItems[i].popupMode = popupMode;
+        rebuildActionLayout();
+      }
+      return;
+    }
+  }
+
   PanelItem item;
   item.type      = PanelItem::ActionType;
   item.action    = action;
@@ -265,8 +285,11 @@ int RibbonButtonGroup::maxRows() const
 QToolButton *RibbonButtonGroup::createButton(QAction *action, ButtonSize size,
                                              QToolButton::ToolButtonPopupMode popupMode)
 {
-  QToolButton *btn = new QToolButton(m_actionWidget);
-  btn->setDefaultAction(action);
+  RibbonToolButton *btn = new RibbonToolButton(m_actionWidget);
+  if (action)
+  {
+    btn->setDefaultAction(action);
+  }
   btn->setAutoRaise(true);
 
   // Medium icon is the geometric mean of large and small sizes
@@ -276,35 +299,38 @@ QToolButton *RibbonButtonGroup::createButton(QAction *action, ButtonSize size,
 
   if (size == LargeButton)
   {
-    btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    btn->setButtonSize(RibbonToolButton::Large);
     btn->setIconSize(m_largeIconSize);
     btn->setMinimumSize(48, 48);
     btn->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
   }
   else if (size == MediumButton)
   {
-    btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    btn->setButtonSize(RibbonToolButton::Small);
     btn->setIconSize(mediumIconSize);
     btn->setMinimumSize(0, 0);
     btn->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
   }
   else // SmallButton
   {
-    btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    btn->setButtonSize(RibbonToolButton::Small);
     btn->setIconSize(m_smallIconSize);
     btn->setMinimumSize(0, 0);
     btn->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
   }
 
   // Override popup mode when explicitly set or when the action has a menu
-  if (action->menu() || popupMode != QToolButton::DelayedPopup)
+  if (action && (action->menu() || popupMode != QToolButton::DelayedPopup))
     btn->setPopupMode(popupMode);
 
   // Forward triggered signal.  Use btn as context so the connection is
   // automatically removed when the button is deleted during a rebuild.
-  connect(action, &QAction::triggered, btn, [this, action]() {
-    emit actionTriggered(action);
-  });
+  if (action)
+  {
+    connect(action, &QAction::triggered, btn, [this, action]() {
+      emit actionTriggered(action);
+    });
+  }
 
   return btn;
 }
@@ -336,7 +362,6 @@ void RibbonButtonGroup::rebuildActionLayout()
         if (si->widget()) delete si->widget();
         delete si;
       }
-      delete sub;
     }
     delete li;
   }

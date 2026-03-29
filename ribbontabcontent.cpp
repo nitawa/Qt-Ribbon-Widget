@@ -58,7 +58,7 @@ RibbonButtonGroup *RibbonTabContent::getOrCreateGroup(const QString &groupName)
 
 void RibbonTabContent::addGroup(const QString &groupName)
 {
-  RibbonButtonGroup *group = new RibbonButtonGroup;
+  RibbonButtonGroup *group = new RibbonButtonGroup(this);
   group->setTitle(groupName);
   group->setLayoutMode(m_layoutMode);
   group->setLargeIconSize(m_largeIconSize);

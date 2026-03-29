@@ -68,7 +68,29 @@ public:
   };
   Q_ENUM(TabAlignment)
 
+  /// Ribbon theme.
+  enum RibbonTheme
+  {
+    DefaultTheme,        ///< Native appearance
+    Office2013Theme,     ///< Office 2013 White theme
+    Office2016BlueTheme, ///< Office 2016 Blue theme
+    DarkTheme            ///< Dark theme
+  };
+  Q_ENUM(RibbonTheme)
+
   explicit Ribbon(QWidget *parent = nullptr);
+
+  // ── Theme management ───────────────────────────────────────────────────────
+
+  /// Set the ribbon theme.
+  ///
+  /// \param[in] theme The theme to apply
+  void setTheme(RibbonTheme theme);
+
+  /// Get the current ribbon theme.
+  ///
+  /// \return The current theme
+  RibbonTheme theme() const { return m_theme; }
 
   // ── Tab management ────────────────────────────────────────────────────────
 
@@ -370,6 +392,7 @@ private:
   RibbonMode     m_ribbonMode;       ///< Current display mode
   RibbonStyle    m_ribbonStyle;      ///< Current layout style
   TabAlignment   m_tabAlignment;     ///< Current tab alignment
+  RibbonTheme    m_theme;            ///< Current theme
   QToolButton   *m_appButton;        ///< Application button (corner widget)
   QToolBar      *m_quickAccessBar;   ///< Quick access toolbar
   QList<ContextTab> m_contextTabs;   ///< Registered context tabs

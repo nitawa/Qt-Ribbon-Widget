@@ -11,5 +11,14 @@
         <file>icons/file_2.svg</file>
         <file>icons/live_folder_2.svg</file>
         <file>icons/save_2.svg</file>
+        <file alias="icons/ArrowDown.png">icons/ArrowDown.png</file>
+        <file alias="icons/ArrowUp.png">icons/ArrowUp.png</file>
+        <file alias="icons/ArrowMore.png">icons/ArrowMore.png</file>
+        <file alias="icons/ribbonPanelOptionButton.png">icons/ribbonPanelOptionButton.png</file>
+    </qresource>
+    <qresource prefix="/themes">
+        <file alias="office2013.qss">themes/office2013.qss</file>
+        <file alias="office2016-blue.qss">themes/office2016-blue.qss</file>
+        <file alias="dark.qss">themes/dark.qss</file>
     </qresource>
 </RCC>

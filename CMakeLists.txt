@@ -52,6 +52,7 @@ set(QTRIBBONWIDGET_PUBLIC_HEADERS
   ribbonbuttongroup.h
   ribbontabbar.h
   ribbontabcontent.h
+  ribbontoolbutton.h
 )
 
 set(QTRIBBONWIDGET_SOURCES
@@ -59,9 +60,11 @@ set(QTRIBBONWIDGET_SOURCES
   ribbonbuttongroup.cpp
   ribbontabbar.cpp
   ribbontabcontent.cpp
+  ribbontoolbutton.cpp
   # .ui files are listed so AUTOUIC generates the required ui_*.h headers.
   ribbonbuttongroup.ui
   ribbontabcontent.ui
+  resource.qrc
 )
 
 # ── Shared library ───────────────────────────────────────────────────────────
@@ -110,6 +113,11 @@ install(DIRECTORY icons/
   DESTINATION ${CMAKE_INSTALL_DATADIR}/QtRibbonWidget/icons
 )
 
+# ── Install: themes (source QSS files) ───────────────────────────────────────
+install(DIRECTORY themes/
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/QtRibbonWidget/themes
+)
+
 # ── CMake package-config files ───────────────────────────────────────────────
 #
 # Generates:
@@ -144,7 +152,7 @@ install(FILES
 )
 
 # ── Demo application (opt-in) ────────────────────────────────────────────────
-option(BUILD_DEMO "Build the QtRibbonWidget demo application" OFF)
+option(BUILD_DEMO "Build the QtRibbonWidget demo application" ON)
 
 if(BUILD_DEMO)
   add_executable(QtRibbonDemo
@@ -152,13 +160,89 @@ if(BUILD_DEMO)
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
-    resource.qrc          # embeds the bundled SVG icons into the demo binary
   )
 
   target_link_libraries(QtRibbonDemo PRIVATE QtRibbonWidget::QtRibbonWidget)
 
   install(TARGETS QtRibbonDemo
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  )
+endif()
+
+# ── Python bindings (opt-in) ────────────────────────────────────────────────
+option(BUILD_PYTHON "Build Python bindings using SIP and PyQt5" ON)
+
+if(BUILD_PYTHON)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+  
+  find_program(SIP_EXECUTABLE NAMES sip)
+  if(NOT SIP_EXECUTABLE)
+    message(FATAL_ERROR "sip executable not found. Required for BUILD_PYTHON.")
+  endif()
+
+  # Get PyQt5 SIP directory
+  set(PYQT5_SIP_DIR "/usr/lib/python3/dist-packages/PyQt5/bindings")
+  if(NOT EXISTS "${PYQT5_SIP_DIR}/QtCore/QtCoremod.sip")
+    # Fallback for older systems
+    set(PYQT5_SIP_DIR "/usr/share/sip/PyQt5")
+  endif()
+
+  # Get SIP include directory
+  set(SIP_INCLUDE_DIR "/usr/include/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}")
+
+  set(SIP_SRC "${CMAKE_CURRENT_SOURCE_DIR}/python/QtRibbonWidget.sip")
+  set(SIP_OUT "${CMAKE_CURRENT_BINARY_DIR}/sip")
+  file(MAKE_DIRECTORY ${SIP_OUT})
+
+  # Manual SIP 4 call with correct flags
+  add_custom_command(
+    OUTPUT "${SIP_OUT}/sipQtRibbonWidgetcmodule.cpp"
+           "${SIP_OUT}/sipQtRibbonWidgetRibbon.cpp"
+           "${SIP_OUT}/sipQtRibbonWidgetRibbonButtonGroup.cpp"
+    COMMAND ${SIP_EXECUTABLE}
+            -c ${SIP_OUT}
+            -I ${PYQT5_SIP_DIR}
+            -n PyQt5.sip
+            -t Qt_5_15_0
+            -t WS_X11
+            ${SIP_SRC}
+    DEPENDS ${SIP_SRC} python/ribbon.sip python/ribbonbuttongroup.sip
+    COMMENT "Generating SIP bindings for QtRibbonWidget"
+  )
+
+  set(SIP_SOURCES
+    "${SIP_OUT}/sipQtRibbonWidgetcmodule.cpp"
+    "${SIP_OUT}/sipQtRibbonWidgetRibbon.cpp"
+    "${SIP_OUT}/sipQtRibbonWidgetRibbonButtonGroup.cpp"
+  )
+  set_source_files_properties(${SIP_SOURCES} PROPERTIES GENERATED TRUE)
+
+  add_library(PyQt5_QtRibbonWidget MODULE ${SIP_SOURCES})
+  # Disable AUTOMOC for SIP generated files
+  set_target_properties(PyQt5_QtRibbonWidget PROPERTIES AUTOMOC OFF)
+  
+  target_link_libraries(PyQt5_QtRibbonWidget PRIVATE QtRibbonWidget Python3::Python)
+  target_include_directories(PyQt5_QtRibbonWidget PRIVATE ${SIP_OUT} ${SIP_INCLUDE_DIR} ${Python3_INCLUDE_DIRS})
+  
+  set_target_properties(PyQt5_QtRibbonWidget PROPERTIES
+    PREFIX ""
+    OUTPUT_NAME "QtRibbonWidget"
+  )
+
+  # Install the python module
+  execute_process(
+    COMMAND ${Python3_INTERPRETER} -c "import sysconfig; print(sysconfig.get_path('platlib'))"
+    OUTPUT_VARIABLE PYTHON_INSTALL_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  
+  install(TARGETS PyQt5_QtRibbonWidget
+    DESTINATION lib
+  )
+  
+  install(FILES python/QtRibbonWidgetPy.py
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/QtRibbonWidget/python
+    RENAME "demo.py"
   )
 endif()
 

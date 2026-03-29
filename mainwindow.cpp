@@ -155,6 +155,31 @@ MainWindow::MainWindow(QWidget *parent)
   ribbon->addAction("Project", "Ribbon", expandTabsAction,
                     RibbonButtonGroup::SmallButton);
 
+  // "Themes" group – demonstrates setTheme()
+  QAction *defaultThemeAction = new QAction(tr("Default"), this);
+  connect(defaultThemeAction, &QAction::triggered, this, [ribbon]() {
+    ribbon->setTheme(Ribbon::DefaultTheme);
+  });
+  ribbon->addAction("Project", "Themes", defaultThemeAction, RibbonButtonGroup::SmallButton);
+
+  QAction *office2013ThemeAction = new QAction(tr("Office 2013"), this);
+  connect(office2013ThemeAction, &QAction::triggered, this, [ribbon]() {
+    ribbon->setTheme(Ribbon::Office2013Theme);
+  });
+  ribbon->addAction("Project", "Themes", office2013ThemeAction, RibbonButtonGroup::SmallButton);
+
+  QAction *office2016ThemeAction = new QAction(tr("Office 2016"), this);
+  connect(office2016ThemeAction, &QAction::triggered, this, [ribbon]() {
+    ribbon->setTheme(Ribbon::Office2016BlueTheme);
+  });
+  ribbon->addAction("Project", "Themes", office2016ThemeAction, RibbonButtonGroup::SmallButton);
+
+  QAction *darkThemeAction = new QAction(tr("Dark"), this);
+  connect(darkThemeAction, &QAction::triggered, this, [ribbon]() {
+    ribbon->setTheme(Ribbon::DarkTheme);
+  });
+  ribbon->addAction("Project", "Themes", darkThemeAction, RibbonButtonGroup::SmallButton);
+
   // ── "Format" tab ──────────────────────────────────────────────────────────
   ribbon->addTab(QIcon(":/icons/engineering_1.svg"), "Format");
 

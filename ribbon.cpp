@@ -14,6 +14,13 @@
 #include <QApplication>
 #include <QStyleOption>
 #include <QPainter>
+#include <QFile>
+#include <QResource>
+
+// Initialize resources when this library is loaded
+static void initResources() {
+  Q_INIT_RESOURCE(resource);
+}
 
 Ribbon::Ribbon(QWidget *parent)
   : QTabWidget(parent)
@@ -21,6 +28,7 @@ Ribbon::Ribbon(QWidget *parent)
   , m_ribbonMode(NormalMode)
   , m_ribbonStyle(ThreeRowStyle)
   , m_tabAlignment(TabAlignLeft)
+  , m_theme(DefaultTheme)
   , m_appButton(nullptr)
   , m_quickAccessBar(new QToolBar(this))
   , m_panelTitleHeight(-1)
@@ -29,55 +37,20 @@ Ribbon::Ribbon(QWidget *parent)
   , m_largeIconSize(32, 32)
   , m_smallIconSize(16, 16)
 {
+  initResources();
+
   // Install the custom tab bar (must be done before adding any tabs)
   setTabBar(m_tabBar);
   m_tabBar->setExpanding(false); // default: tabs are left-packed
 
-  // Determine default colours from the application palette
-  QColor bg  = qApp->palette().color(QPalette::Background);
-  QColor mid = qApp->palette().color(QPalette::Mid);
-
   setAutoFillBackground(true);
-
-  // Set stylesheet
-  QString styleSheetText = QString(
-    "QTabWidget::pane {"
-    "  border-top: 1px solid rgb(%4, %5, %6);"
-    "  position: absolute;"
-    "  top: -1px;"
-    "}"
-    "QTabBar::tab {"
-    "  padding-top: 5px;"
-    "  padding-bottom: 5px;"
-    "  padding-left: 10px;"
-    "  padding-right: 10px;"
-    "  margin-top: 1px;"
-    "}"
-    "QTabBar::tab::!selected {"
-    "  border-bottom: 1px solid rgb(%4, %5, %6);"
-    "  background-color:#ffffff;"
-    "}"
-    "QTabBar::tab:selected {"
-    "  background-color: rgb(%1, %2, %3);"
-    "  border-top: 1px solid rgb(%4, %5, %6);"
-    "  border-right: 1px solid rgb(%4, %5, %6);"
-    "  border-left: 1px solid rgb(%4, %5, %6);"
-    "  border-bottom: 1px solid rgb(%1, %2, %3);"
-    "}"
-    "QTabBar::tab:hover {"
-    "  background-color: rgb(205, 232, 255);"
-    "}"
-    "QTabBar::tab:selected:hover {"
-    "  background-color: rgb(%1, %2, %3);"
-    "}"
-    ).arg(bg.red()).arg(bg.green()).arg(bg.blue())
-     .arg(mid.red()).arg(mid.green()).arg(mid.blue());
-
-  setStyleSheet(styleSheetText);
 
   QPalette pal = palette();
   pal.setColor(QPalette::Background, Qt::white);
   setPalette(pal);
+
+  // Apply default theme (hardcoded styling removed in favor of setTheme)
+  setTheme(DefaultTheme);
 
   // Quick access bar: icon-only, small icons
   m_quickAccessBar->setIconSize(QSize(16, 16));
@@ -117,6 +90,82 @@ void Ribbon::applyGlobalSettings(RibbonTabContent *content) const
     content->setPanelTitleHeight(m_panelTitleHeight);
   if (!m_showPanelTitle)
     content->setShowPanelTitle(false);
+}
+
+// ── Theme management ──────────────────────────────────────────────────────────
+
+void Ribbon::setTheme(RibbonTheme theme)
+{
+  m_theme = theme;
+  if (theme == DefaultTheme)
+  {
+    // Determine default colours from the application palette
+    QColor bg  = qApp->palette().color(QPalette::Background);
+    QColor mid = qApp->palette().color(QPalette::Mid);
+
+    // Set stylesheet (original hardcoded style)
+    QString styleSheetText = QString(
+      "QTabWidget::pane {"
+      "  border-top: 1px solid rgb(%4, %5, %6);"
+      "  position: absolute;"
+      "  top: -1px;"
+      "}"
+      "QTabBar::tab {"
+      "  padding-top: 5px;"
+      "  padding-bottom: 5px;"
+      "  padding-left: 10px;"
+      "  padding-right: 10px;"
+      "  margin-top: 1px;"
+      "}"
+      "QTabBar::tab::!selected {"
+      "  border-bottom: 1px solid rgb(%4, %5, %6);"
+      "  background-color:#ffffff;"
+      "}"
+      "QTabBar::tab:selected {"
+      "  background-color: rgb(%1, %2, %3);"
+      "  border-top: 1px solid rgb(%4, %5, %6);"
+      "  border-right: 1px solid rgb(%4, %5, %6);"
+      "  border-left: 1px solid rgb(%4, %5, %6);"
+      "  border-bottom: 1px solid rgb(%1, %2, %3);"
+      "}"
+      "QTabBar::tab:hover {"
+      "  background-color: rgb(205, 232, 255);"
+      "}"
+      "QTabBar::tab:selected:hover {"
+      "  background-color: rgb(%1, %2, %3);"
+      "}"
+      ).arg(bg.red()).arg(bg.green()).arg(bg.blue())
+       .arg(mid.red()).arg(mid.green()).arg(mid.blue());
+
+    setStyleSheet(styleSheetText);
+  }
+  else if (theme == Office2013Theme)
+  {
+    QFile file(":/themes/office2013.qss");
+    if (file.open(QFile::ReadOnly))
+    {
+      setStyleSheet(file.readAll());
+      file.close();
+    }
+  }
+  else if (theme == Office2016BlueTheme)
+  {
+    QFile file(":/themes/office2016-blue.qss");
+    if (file.open(QFile::ReadOnly))
+    {
+      setStyleSheet(file.readAll());
+      file.close();
+    }
+  }
+  else if (theme == DarkTheme)
+  {
+    QFile file(":/themes/dark.qss");
+    if (file.open(QFile::ReadOnly))
+    {
+      setStyleSheet(file.readAll());
+      file.close();
+    }
+  }
 }
 
 // ── Tab management ────────────────────────────────────────────────────────────
