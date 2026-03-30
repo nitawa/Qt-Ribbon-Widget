@@ -170,7 +170,7 @@ if(BUILD_DEMO)
 endif()
 
 # ── Python bindings (opt-in) ────────────────────────────────────────────────
-option(BUILD_PYTHON "Build Python bindings using SIP and PyQt5" ON)
+option(BUILD_PYTHON "Build Python bindings using SIP and PyQt5" OFF)
 
 if(BUILD_PYTHON)
   find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
